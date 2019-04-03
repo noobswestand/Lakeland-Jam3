@@ -22,6 +22,10 @@ class Enemy(Obj.Obj):
 		self.bbPath=mplPath.Path(np.array(self.poly))
 	def init(self):
 		raise NotImplementedError("Must override init2")
+	def destroy(self):
+		Obj.Obj.destroy(self)
+		self.controller.enemies.remove(self)
+
 	def draw(self,screen):
 		pygame.draw.polygon(screen,self.color,self.poly)
 	def draw_shadow(self,screen):
@@ -43,9 +47,11 @@ class Bullet(Obj.Obj):
 		self.direction=direction
 		self.speed=speed
 		self.color=color
+		self.xvel=math.cos(self.direction)*self.speed
+		self.yvel=math.sin(self.direction)*self.speed
 	def update(self):
-		self.x+=math.cos(self.direction)*self.speed
-		self.y+=math.sin(self.direction)*self.speed
+		self.x+=self.xvel
+		self.y+=self.yvel
 		if self.x<0 or self.x>self.controller.room_width or self.y<0 or self.y>self.controller.room_height:
 			self.destroy()
 		#Collisions
@@ -53,9 +59,14 @@ class Bullet(Obj.Obj):
 			self.x+self.w+abs(self.speed), self.y+self.h+abs(self.speed))
 		walls = self.controller.wallTree.intersect(overlapbbox)
 		for w in walls:
-			if w.col==True and self.x>w.x and self.x<w.x+w.w\
+			if w.col_bullet==True and self.x>w.x and self.x<w.x+w.w\
 			and self.y>w.y and self.y<w.y+w.h:
 				self.destroy()
+
+		#Check for collisions with the player
+		if point_distance(self.x,self.y,self.controller.player.x_center,self.controller.player.y_center)<15:
+			self.controller.bpm+=self.damage
+			self.destroy()
 
 	def destroy(self):
 		Obj.Obj.destroy(self)
@@ -76,6 +87,8 @@ class Shape(Enemy):
 		self.r=0
 		self.raduis=50
 		self.step=0
+		self.damage=5
+
 	def update(self,move=True):
 		#Rotate
 		if move==True:
@@ -92,7 +105,7 @@ class Shape(Enemy):
 					x,y=(self.x+(math.cos(self.r+(i*2*math.pi)/self.sides)*self.raduis),\
 						self.y+(math.sin(self.r+(i*2*math.pi)/self.sides)*self.raduis))
 					d=point_direction(self.x,self.y,x,y)+math.pi
-					Bullet(self.controller,self,x,y,1,d,5,self.color)
+					Bullet(self.controller,self,x,y,self.damage,d,5,self.color)
 
 
 		#Construct the poly

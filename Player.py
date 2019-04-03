@@ -15,6 +15,8 @@ class Player(Obj.Obj):
 		self.controller=controller
 		self.x=0
 		self.y=0
+		self.x_center=0
+		self.y_center=0
 		self.xvel=0
 		self.yvel=0
 
@@ -92,6 +94,9 @@ class Player(Obj.Obj):
 			xx=self.pxy[i][0]+r
 			yy=self.pxy[i][1]+r
 			pygame.draw.circle(screen,self.color,(xx,yy),int(rr[i]))
+			if i==(len(self.pxy)//2):
+				self.x_center=xx
+				self.y_center=yy
 
 		r=self.w/3
 		x=int(self.x+self.w/2)

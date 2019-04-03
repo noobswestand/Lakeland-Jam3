@@ -38,24 +38,26 @@ class Obj():
 			if self.x+self.xvel<i.x+i.w and self.xvel!=0\
 			and self.x+self.w+self.xvel>i.x\
 			and self.y<i.y+i.h and self.y+self.h>i.y:
-				if self.x<i.x:
-					self.x=i.x-self.w
-				if self.x>i.x+i.w:
-					self.x=i.x+i.w
-				self.xvel=0
+				if i.col==True:
+					if self.x<i.x:
+						self.x=i.x-self.w
+					if self.x>i.x+i.w:
+						self.x=i.x+i.w
+					self.xvel=0
 				if changeState==True:
-					i.col=True
+					i.collide()
 			
 			if self.y+self.yvel<i.y+i.h and self.yvel!=0\
 			and self.y+self.h+self.yvel>i.y\
 			and self.x<i.x+i.w and self.x+self.w>i.x:
-				if self.y>i.y+i.h:
-					self.y=i.y+i.h
-				if self.y<i.y:
-					self.y=i.y-self.h
-				self.yvel=0
+				if i.col==True:
+					if self.y>i.y+i.h:
+						self.y=i.y+i.h
+					if self.y<i.y:
+						self.y=i.y-self.h
+					self.yvel=0
 				if changeState==True:
-					i.col=True
+					i.collide()
 			
 
 

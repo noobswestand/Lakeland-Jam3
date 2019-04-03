@@ -1,6 +1,7 @@
 import pygame,math,os,struct,time
 import Wall,Network,Enemy
 from pyqtree import Index
+from Constants import enemyList,wallList
 
 class Game():
 	def __init__(self):
@@ -31,7 +32,7 @@ class Game():
 		self.type2=0
 
 		self.type_name=[[],[]]
-		self.type_name[0]=[]
+		self.type_name[0]=["Normal","Inverse"]
 		self.type_name[1]=["Triangle","Rectangle","Pentagon","Hexagon"]
 
 	def run(self):
@@ -46,7 +47,15 @@ class Game():
 						return 0
 				if event.type == pygame.MOUSEBUTTONDOWN:
 					if event.button == 4:#UP
-						if self.type==1:
+						if self.type==0:#Wall scroll
+							x,y=pygame.mouse.get_pos()
+							x=int(math.floor(float(x)/32.0)*32)
+							y=int(math.floor(float(y)/32.0)*32)
+							self.type2+=1
+							if self.type2>=len(self.type_name[0]):
+								self.type2=0
+
+						if self.type==1:#Enemies Scroll
 							x,y=pygame.mouse.get_pos()
 							x=int(math.floor(float(x)/32.0)*32)
 							y=int(math.floor(float(y)/32.0)*32)
@@ -62,8 +71,17 @@ class Game():
 								if self.type2>=len(self.type_name[1]):
 									self.type2=0
 
+
 					elif event.button == 5:#DOWN
-						if self.type==1:
+						if self.type==0:#Wall scroll
+							x,y=pygame.mouse.get_pos()
+							x=int(math.floor(float(x)/32.0)*32)
+							y=int(math.floor(float(y)/32.0)*32)
+							self.type2-=1
+							if self.type2<0:
+								self.type2=len(self.type_name[0])-1
+
+						if self.type==1:#Enemies Scroll
 							x,y=pygame.mouse.get_pos()
 							x=int(math.floor(float(x)/32.0)*32)
 							y=int(math.floor(float(y)/32.0)*32)
@@ -104,6 +122,7 @@ class Game():
 					self.buffer.Buffer=file.read()
 					a=self.buffer.readshort()
 					for i in range(a):#WALLS
+						_type=self.buffer.readbyte()
 						x=self.buffer.readshort()
 						y=self.buffer.readshort()
 						w=self.buffer.readshort()
@@ -112,27 +131,22 @@ class Game():
 						c[0]=self.buffer.readbyte()
 						c[1]=self.buffer.readbyte()
 						c[2]=self.buffer.readbyte()
-						w=Wall.Wall(self,x,y,w,h,(c[0],c[1],c[2]))
-						w.col=True
-						self.walls.append(w)
+						wall=None
+						wall=wallList[_type](self,x,y,w,h,(c[0],c[1],c[2]))
+						wall.done=True
+						self.walls.append(wall)
 					self.player_x=self.buffer.readshort()
 					self.player_y=self.buffer.readshort()
 					a=self.buffer.readshort()
+					print(a)
 					for i in range(a):#ENEMIES
 						x=self.buffer.readshort()
 						y=self.buffer.readshort()
 						_type=self.buffer.readbyte()
-						r=self.buffer.readshort()
+						r=self.buffer.readdouble()
 						beat=self.buffer.readbyte()
 						beatoff=self.buffer.readbyte()
-						if _type==0:
-							w=Enemy.Triangle(self,x,y)
-						if _type==1:
-							w=Enemy.Rectangle(self,x,y)
-						if _type==2:
-							w=Enemy.Pentagon(self,x,y)
-						if _type==3:
-							w=Enemy.Hexagon(self,x,y)
+						w=enemyList[_type](self,x,y)
 						w.r=r
 						w.beat_mod=beat
 						w.beat_mod_off=beatoff
@@ -147,6 +161,7 @@ class Game():
 				self.buffer.clearbuffer()
 				self.buffer.writeshort(len(self.walls))
 				for w in self.walls:
+					self.buffer.writebyte(w.type)
 					self.buffer.writeshort(w.x)
 					self.buffer.writeshort(w.y)
 					self.buffer.writeshort(w.w)
@@ -157,13 +172,14 @@ class Game():
 				self.buffer.writeshort(self.player_x)
 				self.buffer.writeshort(self.player_y)
 				self.buffer.writeshort(len(self.enemies))
+				print(len(self.enemies))
 				for w in self.enemies:
 					self.buffer.writeshort(w.x)
 					self.buffer.writeshort(w.y)
 					self.buffer.writebyte(w.type)
-					self.buffer.writeshort(w.r)
-					self.buffer.writeshort(w.beat_mod)
-					self.buffer.writeshort(w.beat_mod_off)
+					self.buffer.writedouble(w.r)
+					self.buffer.writebyte(w.beat_mod)
+					self.buffer.writebyte(w.beat_mod_off)
 
 				types = ''.join(self.buffer.BufferWriteT)
 				bstr=struct.pack("="+types,*self.buffer.BufferWrite)
@@ -187,8 +203,8 @@ class Game():
 							add=False
 							break
 					if add==True:
-						w=Wall.Wall(self,x,y,32,32)
-						w.col=True
+						w=wallList[self.type2](self,x,y,32,32)
+						w.done=True
 						self.walls.append(w)
 				#Remove
 				if pygame.mouse.get_pressed()[2]==True:
@@ -219,17 +235,8 @@ class Game():
 							add=False
 							break
 					if add==True:
-						w=None
-						if self.type2==0:
-							w=Enemy.Triangle(self,x,y)
-						if self.type2==1:
-							w=Enemy.Rectangle(self,x,y)
-						if self.type2==2:
-							w=Enemy.Pentagon(self,x,y)
-						if self.type2==3:
-							w=Enemy.Hexagon(self,x,y)
+						w=enemyList[self.type2](self,x,y)
 						w.update(False)
-						self.enemies.append(w)
 				#Remove
 				if pygame.mouse.get_pressed()[2]==True:
 					x,y=pygame.mouse.get_pos()
@@ -237,7 +244,6 @@ class Game():
 					y=int(math.floor(float(y)/32.0)*32)
 					for w in self.enemies:
 						if w.x==x and w.y==y:
-							self.enemies.remove(w)
 							w.destroy()
 							break
 			
@@ -265,7 +271,7 @@ class Game():
 
 			#GUI
 			if self.type==0:
-				textsurface = self.font.render('Walls + PLAYER', False, (255,255,255))
+				textsurface = self.font.render('Walls'+str(self.type2)+":"+str(self.type_name[0][self.type2]) + ' PLAYER', False, (255,255,255))
 				self.screen.blit(textsurface,(0,0))
 			if self.type==1:
 				textsurface = self.font.render('Enemies: '+str(self.type2)+":"+str(self.type_name[1][self.type2]), False, (255,255,255))

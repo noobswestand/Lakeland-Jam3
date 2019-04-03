@@ -1,5 +1,6 @@
 import pygame,Player,Wall,Enemy,random,Network
 from pyqtree import Index
+from Constants import enemyList,wallList
 
 
 class Game():
@@ -12,6 +13,8 @@ class Game():
 		self.clock = pygame.time.Clock()
 		self.buffer=Network.Buff()
 
+		self.tick=60
+
 		#Setup game vars
 		self.view_x=0
 		self.view_y=0
@@ -19,6 +22,8 @@ class Game():
 		self.room_width,self.room_height=self.resolution
 
 		self.background=(201, 193, 108)
+		self.font = pygame.font.SysFont('Comic Sans MS', 24)
+
 
 		#Music - all music is 120 BPM
 		pygame.mixer.music.load('assets/music/level0.wav')
@@ -37,10 +42,10 @@ class Game():
 
 
 		#Setup game vars
-		self.bpm=240
+		self.bpm=120
 		self.beat=0
 		self.beat_go=False
-		self.level=1
+		self.level=3
 		self.load_level(self.level)
 
 		
@@ -56,6 +61,7 @@ class Game():
 			self.buffer.Buffer=file.read()
 			a=self.buffer.readshort()
 			for i in range(a):#WALLS
+				_type=self.buffer.readbyte()
 				x=self.buffer.readshort()
 				y=self.buffer.readshort()
 				w=self.buffer.readshort()
@@ -64,8 +70,8 @@ class Game():
 				c[0]=self.buffer.readbyte()
 				c[1]=self.buffer.readbyte()
 				c[2]=self.buffer.readbyte()
-				w=Wall.Wall(self,x,y,w,h,(c[0],c[1],c[2]))
-				self.walls.append(w)
+				wall=wallList[_type](self,x,y,w,h,(c[0],c[1],c[2]))
+				self.walls.append(wall)
 			self.player.x=self.buffer.readshort()
 			self.player.y=self.buffer.readshort()
 			self.player.xvel=0
@@ -75,17 +81,10 @@ class Game():
 				x=self.buffer.readshort()
 				y=self.buffer.readshort()
 				_type=self.buffer.readbyte()
-				r=self.buffer.readshort()
+				r=self.buffer.readdouble()
 				beat=self.buffer.readbyte()
 				beatoff=self.buffer.readbyte()
-				if _type==0:
-					w=Enemy.Triangle(self,x,y)
-				if _type==1:
-					w=Enemy.Rectangle(self,x,y)
-				if _type==2:
-					w=Enemy.Pentagon(self,x,y)
-				if _type==3:
-					w=Enemy.Hexagon(self,x,y)
+				w=enemyList[_type](self,x,y)
 				w.r=r
 				w.beat_mod=beat
 				w.beat_mod_off=beatoff
@@ -113,15 +112,21 @@ class Game():
 			#Update the objects
 			for i in self.objs:
 				i.update()
+			
 
 			#Draw the objects
 			for i in self.objs:
 				i.draw_shadow(self.screen)
 			for i in self.objs:
 				i.draw(self.screen)
+			
 
 			#Draw the GUI
-
+			textsurface = self.font.render("BPM: "+str(self.bpm), False, (255,255,255))
+			textsurface2 = self.font.render("BPM: "+str(self.bpm), False, (0,0,0))
+			self.screen.blit(textsurface2,(2,2))
+			self.screen.blit(textsurface,(0,0))
+			
 
 			#Game Logic
 			self.beat+=self.bpm/60
@@ -131,19 +136,20 @@ class Game():
 			else:
 				self.beat_go=False
 
+			#Check if you completed the level
 			complete=True
 			for w in self.walls:
-				if w.col==False:
+				if w.done==False:
 					complete=False
 					break
-			if complete==True:
+			if complete==True:#Load the next one
 				self.level+=1
 				self.load_level(self.level)
 
 
 
 			#Tick 60 frames per second
-			self.clock.tick(60)
+			self.clock.tick(self.tick)
 				
 game=Game()
 game.run()
