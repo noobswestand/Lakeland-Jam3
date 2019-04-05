@@ -32,8 +32,8 @@ class Game():
 		self.type2=0
 
 		self.type_name=[[],[]]
-		self.type_name[0]=["Normal","Inverse"]
-		self.type_name[1]=["Triangle","Rectangle","Pentagon","Hexagon"]
+		self.type_name[0]=["Normal","Inverse","Breakable"]
+		self.type_name[1]=["Triangle","Rectangle","Pentagon","Hexagon","Targeter","Spinner"]
 
 	def run(self):
 		while self.running:
@@ -101,8 +101,10 @@ class Game():
 			#Change the placement states
 			if pygame.key.get_pressed()[pygame.K_1]:
 				self.type=0
+				self.type2=0
 			if pygame.key.get_pressed()[pygame.K_2]:
 				self.type=1
+				self.type2=0
 
 			#Closing the game
 			if pygame.key.get_pressed()[pygame.K_ESCAPE]:
@@ -271,7 +273,8 @@ class Game():
 
 			#GUI
 			if self.type==0:
-				textsurface = self.font.render('Walls'+str(self.type2)+":"+str(self.type_name[0][self.type2]) + ' PLAYER', False, (255,255,255))
+				textsurface = self.font.render('Walls'+str(
+					self.type2)+":"+str(self.type_name[0][self.type2]) + ' PLAYER', False, (255,255,255))
 				self.screen.blit(textsurface,(0,0))
 			if self.type==1:
 				textsurface = self.font.render('Enemies: '+str(self.type2)+":"+str(self.type_name[1][self.type2]), False, (255,255,255))

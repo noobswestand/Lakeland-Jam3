@@ -1,4 +1,4 @@
-import pygame,Obj
+import pygame,Obj,Particle,random,math
 
 class Wall(Obj.Obj):
 	def __init__(self,controller,x,y,w,h,color=(91, 91, 91)):
@@ -19,18 +19,23 @@ class Wall(Obj.Obj):
 	def destroy(self):
 		Obj.Obj.destroy(self)
 		self.controller.wallTree.remove(self,self.bbox)
+
+	def hit_bullet(self):
+		pass
 	
 
 class WallNormal(Wall):
-	def __init__(self,controller,x,y,w,h,color=(183, 183, 183)):
+	def __init__(self,controller,x,y,w,h,color=(45, 94, 255)):
 		Wall.__init__(self,controller,x,y,w,h,color)
 		self.type=0
 		self.col=True
 		self.col_bullet=False
 
 	def collide(self):
-		self.done=True
-		self.col_bullet=True
+		if self.done==False:
+			self.done=True
+			self.col_bullet=True
+			self.controller.play_sound(self.controller.wall_collide)
 
 	def draw(self,screen):
 		if self.done==True:
@@ -46,7 +51,7 @@ class WallNormal(Wall):
 
 
 class WallInverse(Wall):
-	def __init__(self,controller,x,y,w,h,color=(50,50,50)):
+	def __init__(self,controller,x,y,w,h,color=(255, 80, 45)):#
 		Wall.__init__(self,controller,x,y,w,h,color)
 		self.type=1
 		self.col=True
@@ -54,9 +59,11 @@ class WallInverse(Wall):
 		self.r=0.0
 
 	def collide(self):
-		self.col=False
-		self.col_bullet=False
-		self.done=True
+		if self.col==True:
+			self.col=False
+			self.col_bullet=False
+			self.done=True
+			self.controller.play_sound(self.controller.wall_collide)
 		
 	def draw(self,screen):
 		if self.col==False:
@@ -70,3 +77,46 @@ class WallInverse(Wall):
 	def draw_shadow(self,screen):
 		if self.col==True:
 			pygame.draw.rect(screen, (50,50,50), pygame.Rect(self.getx()+5, self.gety()+5, self.getw(), self.geth()))
+
+
+class WallBreak(Wall):
+	def __init__(self,controller,x,y,w,h,color=(43, 195, 255)):
+		Wall.__init__(self,controller,x,y,w,h,color)
+		self.type=2
+		self.col=True
+		self.col_bullet=False
+		self.health=0
+		self.cooldown=0
+
+	def collide(self):
+		if self.done==False and self.cooldown<=0:
+			self.done=True
+			self.col_bullet=True
+			self.health=5
+			self.cooldown=60
+			self.controller.play_sound(self.controller.wall_collide)
+		
+	def draw(self,screen):
+		self.cooldown-=1
+
+		if self.done==True:
+			self.r+=(0-self.r)/10.0
+			pygame.draw.rect(screen, self.getcolor(), pygame.Rect(self.getx()-int(self.r), self.gety()-int(self.r),\
+				self.getw()+int(self.r*2), self.geth()+int(self.r*2)))
+		else:
+			pygame.draw.rect(screen, (0,0,0), pygame.Rect(self.getx(), self.gety(),\
+				self.getw(), self.geth()),1)
+	def draw_shadow(self,screen):
+		if self.done==True:
+			pygame.draw.rect(screen, (50,50,50), pygame.Rect(self.getx()+5, self.gety()+5, self.getw(), self.geth()))
+
+	def hit_bullet(self):
+		self.health-=1
+		if self.health<=0:
+			self.r=15.0
+			self.col_bullet=False
+			self.done=False
+			self.controller.play_sound(self.controller.wall_break)
+			for i in range(10):
+				p=Particle.Particle(self.controller,self.x+random.uniform(0,self.getw()),self.y+random.uniform(0,self.geth())\
+					,5,random.uniform(0,math.pi*2),random.uniform(0,2),self.color,60)

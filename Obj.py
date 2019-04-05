@@ -14,9 +14,13 @@ class Obj():
 		self.h=16
 		self.solid=False
 		self.controller.objs.append(self)
-	def destroy(self):
+	def destroy(self,d=True):
 		if self in self.controller.objs:
 			self.controller.objs.remove(self)
+		if d==True:
+			del self
+	def create(self):
+		self.controller.objs.append(self)
 
 	def getx(self):
 		return self.x

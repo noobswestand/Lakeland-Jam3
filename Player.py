@@ -1,4 +1,4 @@
-import pygame,math,Obj
+import pygame,math,random,Obj,Particle
 
 def point_distance(x1,y1,x2,y2):
 	return (((x1-x2)**2)+((y1-y2)**2))**0.5
@@ -19,6 +19,7 @@ class Player(Obj.Obj):
 		self.y_center=0
 		self.xvel=0
 		self.yvel=0
+		self.dead=False
 
 		self.pxy=[[self.x,self.y],[self.x,self.y],[self.x,self.y],[self.x,self.y],[self.x,self.y]]
 
@@ -58,8 +59,8 @@ class Player(Obj.Obj):
 		'''
 		x,y=pygame.mouse.get_pos()
 		d=point_direction(x-self.w/2,y-self.w/2,self.x,self.y)
-		self.xvel+=(math.cos(d)*self.move_speed)*0.5
-		self.yvel+=(math.sin(d)*self.move_speed)*0.5
+		self.xvel+=(math.cos(d)*self.move_speed)*1.5#*0.5
+		self.yvel+=(math.sin(d)*self.move_speed)*1.5#*0.5
 
 		#Collisions - Enemies
 		for e in self.controller.enemies:
@@ -77,13 +78,33 @@ class Player(Obj.Obj):
 
 
 		
-		#Friction
-		self.x+=self.xvel
-		self.y+=self.yvel
-		self.xvel=clamp(self.xvel,-8,8)
-		self.yvel=clamp(self.yvel,-8,8)
+		#Motion
+		if self.dead==False:
+			self.x+=self.xvel
+			self.y+=self.yvel
+			self.xvel=clamp(self.xvel,-8,8)
+			self.yvel=clamp(self.yvel,-8,8)
+		else:
+			self.x=-500
+			self.y=-500
+			self.x_center=-500
+			self.y_center=-500
 		#self.xvel=self.xvel*(1-self.friction)
 		#self.yvel=self.yvel*(1-self.friction)
+
+
+		#Death
+		if self.controller.bpm>360:
+			for i in range(20):
+				p=Particle.Particle(self.controller,self.x_center,self.y_center\
+				,7,random.uniform(0,math.pi*2),random.uniform(0,4),self.color,120)
+			for i in range(20):
+				p=Particle.Particle(self.controller,self.x_center,self.y_center\
+				,4,random.uniform(0,math.pi*2),random.uniform(0,4),self.color2,120)
+			self.destroy(False)
+			self.dead=True
+			self.controller.tick=30
+
 
 	def draw(self,screen):
 		r=self.w/2
