@@ -14,6 +14,7 @@ class Obj():
 		self.h=16
 		self.solid=False
 		self.controller.objs.append(self)
+		self.draw_normal=True
 	def destroy(self,d=True):
 		if self in self.controller.objs:
 			self.controller.objs.remove(self)

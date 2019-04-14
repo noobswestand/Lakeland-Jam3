@@ -35,6 +35,7 @@ class Player(Obj.Obj):
 		self.key_up=False
 		self.key_down=False
 		self.move_speed=2
+
 	def move(self,xvel,yvel):
 		self.xvel+=xvel
 		self.yvel+=yvel
@@ -94,7 +95,7 @@ class Player(Obj.Obj):
 
 
 		#Death
-		if self.controller.bpm>360:
+		if self.controller.bpm>480:
 			for i in range(20):
 				p=Particle.Particle(self.controller,self.x_center,self.y_center\
 				,7,random.uniform(0,math.pi*2),random.uniform(0,4),self.color,120)

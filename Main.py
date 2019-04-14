@@ -10,9 +10,15 @@ class Game():
 	def __init__(self):
 		#Setup game window
 		pygame.init()
-		pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=256)
+		pygame.display.init()
 		self.resolution=(1280,720)
 		self.screen = pygame.display.set_mode(self.resolution)
+		self.screen_slow = pygame.Surface(self.resolution)
+		self.screen_slow_shadow = pygame.Surface(self.resolution)
+		self.screen_slow.set_colorkey((0,0,0))
+		self.screen_slow_shadow.set_colorkey((0,0,0))
+		self.screen_update=False
+
 		self.running = True
 		self.clock = pygame.time.Clock()
 		self.buffer=Network.Buff()
@@ -31,8 +37,7 @@ class Game():
 
 
 		#Music - all music is 120 BPM
-		pygame.mixer.music.load('assets/music/level0.wav')
-		pygame.mixer.music.play(-1)
+		pygame.mixer.music.load('assets/music/level.mp3')
 
 		#Sounds
 		self.channels=[]
@@ -40,13 +45,13 @@ class Game():
 		for i in range(pygame.mixer.get_num_channels()):
 			self.channels.append(pygame.mixer.Channel(i))
 
-
 		self.wall_collide = AudioSegment.from_wav("assets/sound/wallNormal.wav")
 		self.wall_break = AudioSegment.from_wav("assets/sound/wallBreak.wav")
-		#self.wall_collide=[]
-		#self.load_sound(self.wall_collide,'assets/sound/wallNormal.wav')
-		#self.wall_break=[]
-		#self.load_sound(self.wall_break,'assets/sound/wallBreak.wav')
+		self.wall_hit = AudioSegment.from_wav("assets/sound/wallHit.wav")
+		self.wall_hit_bullet = AudioSegment.from_wav("assets/sound/wallBulletHit.wav")
+
+		self.shoot_spinner= AudioSegment.from_wav("assets/sound/shoot_spinner.wav")
+		self.shoot_shape = AudioSegment.from_wav("assets/sound/shoot_shape.wav")
 
 		#Engine
 		self.objs=[]
@@ -54,6 +59,12 @@ class Game():
 		#QuadTree Collisions
 		self.wallTree = Index(bbox=(0, 0, 10000, 10000))
 		self.walls=[]
+
+		#GUI
+		self.gui_heart=[(0,1),(0.5,1.25),(1,1),(1.15,0.5),(1.1,0.5),(0,-1),\
+			(0,-1),(-1.1,0.5),(-1.15,0.5),(-1,1),(-0.5,1.25),(0,1)]
+		self.gui_heart_size=1
+
 
 		#Setup objects
 		self.player=Player.Player(self)
@@ -65,7 +76,9 @@ class Game():
 		self.bpm_start=self.bpm
 		self.beat=0
 		self.beat_go=False
-		self.level=5
+		self.level=0
+		self.level_begin=False
+		self.level_final=8
 		#self.load_level(self.level)
 		self.death_count=0
 		self.win=False
@@ -74,11 +87,16 @@ class Game():
 
 
 
-	def play_sound(self,sound):
-		t = threading.Thread(target=play,args=(sound,))
+	def play_sound(self,sound,frame_rate=None):
+		if frame_rate==None:
+			frame_rate=sound.frame_rate
+		new_sound = sound._spawn(sound.raw_data, overrides={'frame_rate': int(frame_rate)})
+		t = threading.Thread(target=play,args=(new_sound,))
 		t.start()
 
 	def load_level(self,lvl):
+		self.level_begin=True
+
 		for w in self.walls:
 			w.destroy()
 		for i in range(15):
@@ -91,7 +109,7 @@ class Game():
 		filter(lambda a: a != self.player, self.objs)
 		del self.walls
 		self.walls=[]
-		with open("assets/levels/"+str(lvl)+".data","r") as file:
+		with open("assets/levels/"+str(lvl)+".data","rb") as file:
 			self.buffer.Buffer=file.read()
 			a=self.buffer.readshort()
 			for i in range(a):#WALLS
@@ -107,7 +125,9 @@ class Game():
 				wall=wallList[_type](self,x,y,w,h)#,(c[0],c[1],c[2])
 				self.walls.append(wall)
 			self.player.x=self.buffer.readshort()
+			self.player.x_center=self.player.x
 			self.player.y=self.buffer.readshort()
+			self.player.y_center=self.player.y
 			self.player.xvel=0
 			self.player.yvel=0
 			a=self.buffer.readshort()
@@ -214,6 +234,7 @@ class Game():
 				self.load_level(self.level)
 				self.tick=60
 				self.menu=False
+				pygame.mixer.music.play(-1)
 
 
 		#Quit button
@@ -233,8 +254,24 @@ class Game():
 				self.running = False
 				pygame.quit()
 
-		
+	def draw_start(self):
+		surface=pygame.Surface((self.room_width,self.room_height))
+		surface.set_alpha(128)
+		pygame.draw.rect(surface,(0,0,0),(0,0,self.room_width,self.room_height))
+		self.screen.blit(surface, (0,0))
 
+		surface2=pygame.Surface((100,100))
+		surface2.set_colorkey((0,0,0))
+		surface2.set_alpha(164)
+		pygame.draw.circle(surface2,(255,255,255),(50,50),45)
+		self.screen.blit(surface2, (self.player.x_center-50,self.player.y_center-50))
+
+		text = self.font.render("Put mouse here ->", False, (255,255,255))
+		self.screen.blit(text, (self.player.x_center-250,self.player.y_center-15))
+		
+		xy=pygame.mouse.get_pos()
+		if ((xy[0]-self.player.x_center)**2 + (xy[1]-self.player.y_center)**2)**0.5<50:
+			self.level_begin=False
 
 
 
@@ -255,28 +292,91 @@ class Game():
 				self.play_sound(self.wall_break)
 
 
-			#Clear the screen
+			###################Clear the screen##################
 			pygame.display.flip()
 			self.screen.fill(self.background)
 
-			#Update the objects
-			for i in self.objs:
-				i.update()
 			
+			if self.level_begin==False:
 
-			#Draw the objects
-			for i in self.objs:
-				i.draw_shadow(self.screen)
-			for i in self.objs:
-				i.draw(self.screen)
-			
+				###################Update the objects##################
+				for i in self.objs:
+					i.update()
 
-			#Draw the GUI
+				###################Draw the objects##################
+				for i in self.objs:
+					if i.draw_normal==True:
+						i.draw_shadow(self.screen)
+
+				if self.win==False:
+					self.screen.blit(self.screen_slow_shadow,(0,0))
+
+				for i in self.objs:
+					if i.draw_normal==True:
+						i.draw(self.screen)
+
+				###################DRAW NON UPDATING OBJECTS##################
+				
+				if self.screen_update==True:
+					self.screen_slow.fill(pygame.Color(0,0,0,0))
+					self.screen_slow_shadow.fill(pygame.Color(0,0,0,0))
+
+					for i in self.objs:
+						if i.draw_normal==False:
+							i.draw_shadow(self.screen_slow_shadow)
+					for i in self.objs:
+						if i.draw_normal==False:
+							i.draw(self.screen_slow)
+					self.screen_update=False
+				if self.win==False:
+					self.screen.blit(self.screen_slow,(0,0))
+				
+				
+
+			##################Draw the GUI##################
 			textsurface = self.font.render("BPM: "+str(self.bpm), False, (255,255,255))
 			textsurface2 = self.font.render("BPM: "+str(self.bpm), False, (0,0,0))
 			self.screen.blit(textsurface2,(2,2))
 			self.screen.blit(textsurface,(0,0))
 
+			if self.beat_go==True:
+				self.gui_heart_size+=1
+
+			self.gui_heart_size+=(1.0-self.gui_heart_size)/5.0
+			l=list(self.gui_heart)
+			for i in range(len(l)):
+				l[i]=list(l[i])
+				l[i][0]=l[i][0]*25*self.gui_heart_size+75
+				l[i][1]=l[i][1]*-25*self.gui_heart_size+75
+			pygame.draw.polygon(self.screen,(0,0,0),tuple(l))
+			l=list(self.gui_heart)
+			for i in range(len(l)):
+				l[i]=list(l[i])
+				l[i][0]=l[i][0]*25*self.gui_heart_size*((float(480-self.bpm)/360.0))+75
+				l[i][1]=l[i][1]*-25*self.gui_heart_size*((float(480-self.bpm)/360.0))+75
+			pygame.draw.polygon(self.screen,(255,0,0),tuple(l))
+
+			#Restart button
+			if self.menu==False and self.player.dead==False and self.win==False:
+				xy=pygame.mouse.get_pos()
+				ww=150
+				hh=25
+				xx=(self.room_width)-ww-15
+				yy=(self.room_height)-hh-15
+				pygame.draw.rect(self.screen,(155,155,155),(xx,yy,ww,hh))
+				
+				text = self.font.render("Restart Level", False, (255,255,255))
+				text_rect  = text.get_rect(center=(self.room_width-ww/2-15,self.room_height-hh-5))
+				self.screen.blit(text, text_rect)
+
+				if xy[0]>xx and xy[1]>yy and xy[0]<xx+ww and xy[1]<yy+hh:
+					pygame.draw.rect(self.screen,(255,255,255),(xx,yy,ww,hh),3)
+					if pygame.mouse.get_pressed()[0]==True:
+						self.load_level(self.level)
+
+
+			if self.level_begin==True:
+				self.draw_start()
 
 			if self.menu==True:
 				self.draw_menu()
@@ -302,6 +402,8 @@ class Game():
 			if self.win==True:
 				complete=False
 			if self.menu==True:
+				complete=False
+			if self.level==self.level_final:
 				complete=False
 			for w in self.walls:
 				if w.done==False:

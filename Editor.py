@@ -32,8 +32,11 @@ class Game():
 		self.type2=0
 
 		self.type_name=[[],[]]
-		self.type_name[0]=["Normal","Inverse","Breakable"]
-		self.type_name[1]=["Triangle","Rectangle","Pentagon","Hexagon","Targeter","Spinner"]
+		self.type_name[0]=["Normal","Inverse","Breakable","Breakable2"]
+		self.type_name[1]=["Triangle","Rectangle","Pentagon","Hexagon","Targeter","Spinner","Plus","Plus2",\
+		"Rhombus","Trap"]
+
+		self.loaded=False
 
 	def run(self):
 		while self.running:
@@ -114,13 +117,14 @@ class Game():
 
 
 			#Loading
-			if pygame.key.get_pressed()[pygame.K_LCTRL]:
+			if pygame.key.get_pressed()[pygame.K_LCTRL] and self.loaded==False:
+				self.loaded=True
 				for w in self.walls:
 					w.destroy()
 					del w
 				del self.walls
 				self.walls=[]
-				with open("save.data","r") as file:
+				with open("save.data","rb") as file:
 					self.buffer.Buffer=file.read()
 					a=self.buffer.readshort()
 					for i in range(a):#WALLS
@@ -140,7 +144,6 @@ class Game():
 					self.player_x=self.buffer.readshort()
 					self.player_y=self.buffer.readshort()
 					a=self.buffer.readshort()
-					print(a)
 					for i in range(a):#ENEMIES
 						x=self.buffer.readshort()
 						y=self.buffer.readshort()
@@ -153,6 +156,8 @@ class Game():
 						w.beat_mod=beat
 						w.beat_mod_off=beatoff
 						w.update(False)
+
+
 					
 			#Saving
 			if pygame.key.get_pressed()[pygame.K_SPACE]:
@@ -174,19 +179,20 @@ class Game():
 				self.buffer.writeshort(self.player_x)
 				self.buffer.writeshort(self.player_y)
 				self.buffer.writeshort(len(self.enemies))
-				print(len(self.enemies))
 				for w in self.enemies:
 					self.buffer.writeshort(w.x)
 					self.buffer.writeshort(w.y)
 					self.buffer.writebyte(w.type)
-					self.buffer.writedouble(w.r)
+					#print("rot",w.r)
+					self.buffer.writedouble(float(w.r))
+
 					self.buffer.writebyte(w.beat_mod)
 					self.buffer.writebyte(w.beat_mod_off)
-
+				
 				types = ''.join(self.buffer.BufferWriteT)
 				bstr=struct.pack("="+types,*self.buffer.BufferWrite)
 				try:
-					with open("save.data",'w') as file:
+					with open("save.data",'wb') as file:
 						file.write(bstr)
 					print("Saved")
 				except:

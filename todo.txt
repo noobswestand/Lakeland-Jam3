@@ -1,8 +1,2 @@
-breakable blocks
-	needs to be hit by a bullet to disappear
-	255, 146, 45
-
-enemies
-	have one that shoots and breaks blocks towards you
-
-levels
+final boss
+	
